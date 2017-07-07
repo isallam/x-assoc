@@ -169,7 +169,7 @@ public class ObjyAccess {
    *
    * @return
    */
-  boolean setupCache() {
+  boolean initAccessMode() {
     // cache classes.
     assocMapClass.classRef = com.objy.data.Class.lookupClass(AssocMapClassName);
     assocMapClass.filterAttr = assocMapClass.classRef.lookupAttribute(AssocMapFilterAttr);
@@ -259,9 +259,12 @@ public class ObjyAccess {
             assocMapClass.collectionAttr, assocMapClass.value);
 
     // set the key and value in the map from the call object.... 
-    // TBD...
-    //assocMapClass.value.mapValue().put(key, value);
-    
+    Variable key = new Variable(call.getObjectId().toString());
+    if (!assocMapClass.value.mapValue().containsKey(key))
+    {
+      Variable value = new Variable(call);
+      assocMapClass.value.mapValue().put(key, value);
+    }
     return true;
   }
 

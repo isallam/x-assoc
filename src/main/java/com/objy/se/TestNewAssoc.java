@@ -1,7 +1,11 @@
 package com.objy.se;
 
+import com.objy.data.Instance;
+import com.objy.data.Reference;
 import com.objy.db.Connection;
 import com.objy.db.Objy;
+import com.objy.db.Transaction;
+import com.objy.db.TransactionMode;
 
 import org.apache.commons.text.RandomStringGenerator;
 
@@ -25,6 +29,11 @@ public class TestNewAssoc {
       Connection connection = new Connection(bootFile);
       
       ObjyAccess objyAccess = new ObjyAccess();
+ 
+      Transaction tx = new Transaction(TransactionMode.READ_ONLY, "spark_write");
+      objyAccess.initAccessMode();
+      tx.commit();
+      
       RandomStringGenerator nameGen = new RandomStringGenerator.Builder()
                                                 .withinRange('a', 'z').build();
 
@@ -32,18 +41,31 @@ public class TestNewAssoc {
                                                 .withinRange('1', '9').build();
 
       long timeStart = System.currentTimeMillis();
-      for (int personI = 0; personI < 10; personI++)
+      
+      tx.start(TransactionMode.READ_UPDATE);
+      
+      for (int personI = 0; personI < 100; personI++)
       {
         String name = nameGen.generate(20);
-        //caller = objyAccess.createPerson(personI, name);
-        for (int phoneI = 0; phoneI < 10; phoneI++)
+        Instance caller = objyAccess.createPerson(personI, name);
+        Reference callerRef = new Reference(caller);
+        for (int phoneI = 0; phoneI < 1000; phoneI++)
         {
           String phoneNumber = numberGen.generate(10);
-          //call = objyAccess.createCall(phoneI, phoneNumber, caller);
-          System.out.println("Name: " + name + " >> phoneCall: " + phoneNumber);
+          Instance call = objyAccess.createCall(phoneI, phoneNumber, callerRef);
+          //System.out.println("Name: " + name + " >> phoneCall: " + phoneNumber);
+          objyAccess.addCallToPerson(new Reference(call), callerRef);
+        }
+        if (((personI+1)%10)==0)
+        {
+          tx.commit();
+          System.out.println("... processed " + (personI+1) + " callers.");
+          tx.start(TransactionMode.READ_UPDATE);
         }
       }
 
+      Transaction.getCurrent().commit();
+      Transaction.getCurrent().close();
       double diff = (System.currentTimeMillis() - timeStart)/1000.0;
       System.out.println("... processTime: " + diff);
       // import placement.
