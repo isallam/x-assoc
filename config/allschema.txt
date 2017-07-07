@@ -1,0 +1,25 @@
+UPDATE SCHEMA
+{
+	CREATE CLASS AssocMap 
+	{
+			filter:        Integer {Encoding: Unsigned, Storage:B64}, 
+			collection:		 Map {Element: Reference {Referenced: ooObj}, 
+													KeyType: String, 
+													CollectionName: ooMap}
+	}
+
+	CREATE CLASS Person
+	{
+			id:            Integer {Encoding: Unsigned},
+			name:          String,
+			calls:          Reference {Referenced: AssocMap}
+	}
+
+	CREATE CLASS Call
+	{
+			id:            Integer {Encoding: Unsigned},
+			phone_number:  String,
+			caller:         Reference {Referenced: Person}
+	}
+
+};
