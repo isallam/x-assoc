@@ -13,6 +13,10 @@ public class TestNewAssoc {
     /**
      * @param args the command line arguments
      */
+  
+    public static int numPerson = 100;
+    public static int numCalls = 500;
+  
     public static void main(String[] args)
     {
 
@@ -40,21 +44,36 @@ public class TestNewAssoc {
       RandomStringGenerator numberGen = new RandomStringGenerator.Builder()
                                                 .withinRange('1', '9').build();
 
+      createPersonAssocSegObjects(tx, objyAccess, nameGen, numberGen);
+
+      createPersonAssocMapObjects(tx, objyAccess, nameGen, numberGen);
+      
+      createPersonAssocSegObjects(tx, objyAccess, nameGen, numberGen);
+
+      createPersonAssocMapObjects(tx, objyAccess, nameGen, numberGen);
+      
+      Transaction.getCurrent().close();
+    }
+    
+    private static void createPersonAssocMapObjects(Transaction tx,
+            ObjyAccess objyAccess, RandomStringGenerator nameGen, 
+            RandomStringGenerator numberGen)
+    {
       long timeStart = System.currentTimeMillis();
       
       tx.start(TransactionMode.READ_UPDATE);
       
-      for (int personI = 0; personI < 100; personI++)
+      for (int personI = 0; personI < numPerson; personI++)
       {
         String name = nameGen.generate(20);
-        Instance caller = objyAccess.createPerson(personI, name);
+        Instance caller = objyAccess.createPersonAssocMap(personI, name);
         Reference callerRef = new Reference(caller);
-        for (int phoneI = 0; phoneI < 1000; phoneI++)
+        for (int phoneI = 0; phoneI < numCalls; phoneI++)
         {
           String phoneNumber = numberGen.generate(10);
           Instance call = objyAccess.createCall(phoneI, phoneNumber, callerRef);
           //System.out.println("Name: " + name + " >> phoneCall: " + phoneNumber);
-          objyAccess.addCallToPerson(new Reference(call), callerRef);
+          objyAccess.addCallToPersonAssocMap(new Reference(call), callerRef);
         }
         if (((personI+1)%10)==0)
         {
@@ -65,10 +84,41 @@ public class TestNewAssoc {
       }
 
       Transaction.getCurrent().commit();
-      Transaction.getCurrent().close();
       double diff = (System.currentTimeMillis() - timeStart)/1000.0;
-      System.out.println("... processTime: " + diff);
-      // import placement.
-      // ... TBD.
+      System.out.println("... processTime for AssocMap: " + diff);
+      
+    }
+    
+    private static void createPersonAssocSegObjects(Transaction tx,
+            ObjyAccess objyAccess, RandomStringGenerator nameGen, 
+            RandomStringGenerator numberGen)
+    {
+      long timeStart = System.currentTimeMillis();
+      tx.start(TransactionMode.READ_UPDATE);
+      
+      for (int personI = 0; personI < numPerson; personI++)
+      {
+        String name = nameGen.generate(20);
+        Instance caller = objyAccess.createPersonAssocSeg(personI, name);
+        Reference callerRef = new Reference(caller);
+        for (int phoneI = 0; phoneI < numCalls; phoneI++)
+        {
+          String phoneNumber = numberGen.generate(10);
+          Instance call = objyAccess.createCall(phoneI, phoneNumber, callerRef);
+          //System.out.println("Name: " + name + " >> phoneCall: " + phoneNumber);
+          objyAccess.addCallToPersonAssocSeg(new Reference(call), callerRef);
+        }
+        if (((personI+1)%10)==0)
+        {
+          tx.commit();
+          System.out.println("... processed " + (personI+1) + " callers.");
+          tx.start(TransactionMode.READ_UPDATE);
+        }
+      }
+
+      Transaction.getCurrent().commit();
+      double diff = (System.currentTimeMillis() - timeStart)/1000.0;
+      System.out.println("... processTime for AssocSeg: " + diff);
+      
     }
 }

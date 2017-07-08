@@ -7,21 +7,19 @@ package com.objy.se;
 
 import com.objy.data.ClassBuilder;
 import com.objy.data.DataSpecification;
+import com.objy.data.List;
 import com.objy.data.LogicalType;
 import com.objy.data.Reference;
-import com.objy.data.Storage;
 import com.objy.data.Variable;
-import com.objy.data.dataSpecificationBuilder.IntegerSpecificationBuilder;
 import com.objy.data.dataSpecificationBuilder.ListSpecificationBuilder;
 import com.objy.data.dataSpecificationBuilder.MapSpecificationBuilder;
 import com.objy.data.dataSpecificationBuilder.ReferenceSpecificationBuilder;
 import com.objy.data.dataSpecificationBuilder.StringSpecificationBuilder;
 import com.objy.data.schemaProvider.SchemaProvider;
-import com.objy.db.ObjectId;
 import com.objy.db.ObjectivityException;
 import com.objy.db.TransactionMode;
 import com.objy.db.TransactionScope;
-import java.util.Date;
+
 
 /**
  *
@@ -41,7 +39,14 @@ class AssocMapClass extends ClassCache {
   com.objy.data.Attribute collectionAttr;
 };
 
-class PersonClass extends ClassCache {
+class PersonAssocMapClass extends ClassCache {
+
+  com.objy.data.Attribute idAttr;
+  com.objy.data.Attribute nameAttr;
+  com.objy.data.Attribute callsAttr;
+};
+
+class PersonAssocSegClass extends ClassCache {
 
   com.objy.data.Attribute idAttr;
   com.objy.data.Attribute nameAttr;
@@ -60,7 +65,8 @@ public class ObjyAccess {
 
   // class names
   final String AssocMapClassName = "AssocMap";
-  final String PersonClassName = "Person";
+  final String PersonAssocMapClassName = "PersonAssocMap";
+  final String PersonAssocSegClassName = "PersonAssocSeg";
   final String CallClassName = "Call";
 
   final String AssocMapFilterAttr = "filter";
@@ -75,9 +81,10 @@ public class ObjyAccess {
   final String CallCallerAttr = "caller";
 
   // more caching 
-  AssocMapClass assocMapClass  = new AssocMapClass();
-  PersonClass personClass      = new PersonClass();
-  CallClass callClass          = new CallClass();
+  AssocMapClass assocMapClass             = new AssocMapClass();
+  PersonAssocMapClass personAssocMapClass = new PersonAssocMapClass();
+  PersonAssocSegClass personAssocSegClass = new PersonAssocSegClass();
+  CallClass callClass                     = new CallClass();
 
   /**
    * createSchema
@@ -91,7 +98,7 @@ public class ObjyAccess {
 
     try (TransactionScope tx = new TransactionScope(TransactionMode.READ_UPDATE)) {
       // transaction Reference 
-      DataSpecification mapElementRefSpec
+      DataSpecification elementRefSpec
               = new ReferenceSpecificationBuilder()
                       .setReferencedClass("ooObj")
                       .build();
@@ -99,7 +106,7 @@ public class ObjyAccess {
       // AssocMap Map                 
       DataSpecification mapSpec
               = new MapSpecificationBuilder()
-                      .setElementSpecification(mapElementRefSpec)
+                      .setElementSpecification(elementRefSpec)
                       .setKeySpecification(new StringSpecificationBuilder().build())
                       .setCollectionName("ooMap")
                       .build();
@@ -110,12 +117,12 @@ public class ObjyAccess {
                       .setReferencedClass(AssocMapClassName)
                       .build();
 
-      // Person reference
-      DataSpecification personRefSpec
-              = new ReferenceSpecificationBuilder()
-                      .setReferencedClass(PersonClassName)
-                      .build();
-
+//      // PersonAssocMap reference
+//      DataSpecification personAssocMapRefSpec
+//              = new ReferenceSpecificationBuilder()
+//                      .setReferencedClass(PersonAssocMapClassName)
+//                      .build();
+//
       // Embedded string spec (currently not used)
 //    DataSpecification stringSpec
 //            = new StringSpecifictaionBuilder()
@@ -131,15 +138,32 @@ public class ObjyAccess {
               .addAttribute(LogicalType.INTEGER, AssocMapFilterAttr)
               .addAttribute(AssocMapCollectionAttr, mapSpec)
               .build();
+
+      // AssocSeg spec
+      DataSpecification assocSegSpec
+              = new ListSpecificationBuilder()
+                      .setElementSpecification(elementRefSpec)
+                      .setCollectionName("SegmentedArray")
+                      .build();
+
       // -------------------
-      // Person Class
+      // PersonAssocMap Class
       // -------------------
-      com.objy.data.Class personClassRep = new ClassBuilder(PersonClassName)
+      com.objy.data.Class personAssocMapClassRep = new ClassBuilder(PersonAssocMapClassName)
               .setSuperclass("ooObj")
               .addAttribute(LogicalType.INTEGER, PersonIdAttr)
-              //.addAttribute(com.objy.data.LogicalType.DateTime, "time")
               .addAttribute(LogicalType.STRING, PersonNameAttr)
               .addAttribute(PersonCallsAttr, assocMapRefSpec)
+              .build();
+
+      // -------------------
+      // PersonAssocSeg Class
+      // -------------------
+      com.objy.data.Class personAssocSegClassRep = new ClassBuilder(PersonAssocSegClassName)
+              .setSuperclass("ooObj")
+              .addAttribute(LogicalType.INTEGER, PersonIdAttr)
+              .addAttribute(LogicalType.STRING, PersonNameAttr)
+              .addAttribute(PersonCallsAttr, assocSegSpec)
               .build();
 
       // -------------------
@@ -149,12 +173,13 @@ public class ObjyAccess {
               .setSuperclass("ooObj")
               .addAttribute(LogicalType.INTEGER, CallIdAttr)
               .addAttribute(LogicalType.STRING, CallPhoneNumberAttr)
-              .addAttribute(CallCallerAttr, personRefSpec)
+              .addAttribute(CallCallerAttr, elementRefSpec)
               .build();
 
       SchemaProvider provider = SchemaProvider.getDefaultPersistentProvider();
       provider.represent(assocMapClassRep);
-      provider.represent(personClassRep);
+      provider.represent(personAssocMapClassRep);
+      provider.represent(personAssocSegClassRep);
       provider.represent(callClassRep);
 
       tx.complete();
@@ -175,10 +200,15 @@ public class ObjyAccess {
     assocMapClass.filterAttr = assocMapClass.classRef.lookupAttribute(AssocMapFilterAttr);
     assocMapClass.collectionAttr = assocMapClass.classRef.lookupAttribute(AssocMapCollectionAttr);
 
-    personClass.classRef = com.objy.data.Class.lookupClass(PersonClassName);
-    personClass.idAttr = personClass.classRef.lookupAttribute(PersonIdAttr);
-    personClass.nameAttr = personClass.classRef.lookupAttribute(PersonNameAttr);
-    personClass.callsAttr = personClass.classRef.lookupAttribute(PersonCallsAttr);
+    personAssocMapClass.classRef = com.objy.data.Class.lookupClass(PersonAssocMapClassName);
+    personAssocMapClass.idAttr = personAssocMapClass.classRef.lookupAttribute(PersonIdAttr);
+    personAssocMapClass.nameAttr = personAssocMapClass.classRef.lookupAttribute(PersonNameAttr);
+    personAssocMapClass.callsAttr = personAssocMapClass.classRef.lookupAttribute(PersonCallsAttr);
+
+    personAssocSegClass.classRef = com.objy.data.Class.lookupClass(PersonAssocSegClassName);
+    personAssocSegClass.idAttr = personAssocSegClass.classRef.lookupAttribute(PersonIdAttr);
+    personAssocSegClass.nameAttr = personAssocSegClass.classRef.lookupAttribute(PersonNameAttr);
+    personAssocSegClass.callsAttr = personAssocSegClass.classRef.lookupAttribute(PersonCallsAttr);
 
     callClass.classRef = com.objy.data.Class.lookupClass(CallClassName);
     callClass.idAttr = callClass.classRef.lookupAttribute(CallIdAttr);
@@ -190,33 +220,46 @@ public class ObjyAccess {
 
   /**
    *
-   * @param id
-   * @param version
-   * @param prevBlockHash
-   * @param blockMerkleRoot
-   * @param blkTime
-   * @param hash
-   * @param prevBlock
    * @return
    */
-  com.objy.data.Instance createPerson(
+  com.objy.data.Instance createPersonAssocMap(
           int id, String name) {
     
     com.objy.data.Instance instance = 
-            com.objy.data.Instance.createPersistent(personClass.classRef);
+            com.objy.data.Instance.createPersistent(personAssocMapClass.classRef);
 
-    instance.getAttributeValue(personClass.idAttr, personClass.value);
-    personClass.value.set(id);
+    instance.getAttributeValue(personAssocMapClass.idAttr, personAssocMapClass.value);
+    personAssocMapClass.value.set(id);
 
     //blockClass.stringValue.set(hash);
-    instance.getAttributeValue(personClass.nameAttr, personClass.value);
-    personClass.value.set(name);
+    instance.getAttributeValue(personAssocMapClass.nameAttr, personAssocMapClass.value);
+    personAssocMapClass.value.set(name);
 
     com.objy.data.Instance assocMapInstance = 
             com.objy.data.Instance.createPersistent(assocMapClass.classRef);
     
-    instance.getAttributeValue(personClass.callsAttr, personClass.value);
-    personClass.value.set(new Reference(assocMapInstance));
+    instance.getAttributeValue(personAssocMapClass.callsAttr, personAssocMapClass.value);
+    personAssocMapClass.value.set(new Reference(assocMapInstance));
+  
+    return instance;
+  }
+
+  /**
+   *
+   * @return
+   */
+  com.objy.data.Instance createPersonAssocSeg(
+          int id, String name) {
+    
+    com.objy.data.Instance instance = 
+            com.objy.data.Instance.createPersistent(personAssocSegClass.classRef);
+
+    instance.getAttributeValue(personAssocSegClass.idAttr, personAssocSegClass.value);
+    personAssocSegClass.value.set(id);
+
+    //blockClass.stringValue.set(hash);
+    instance.getAttributeValue(personAssocSegClass.nameAttr, personAssocSegClass.value);
+    personAssocSegClass.value.set(name);
   
     return instance;
   }
@@ -248,13 +291,13 @@ public class ObjyAccess {
   }
 
 
-  boolean addCallToPerson(com.objy.data.Reference call, 
+  boolean addCallToPersonAssocMap(com.objy.data.Reference call, 
           com.objy.data.Reference person) {
 
     person.getReferencedObject().getAttributeValue(
-            personClass.callsAttr, personClass.value);
+            personAssocMapClass.callsAttr, personAssocMapClass.value);
     
-    Reference assocMap = personClass.value.referenceValue();
+    Reference assocMap = personAssocMapClass.value.referenceValue();
     assocMap.getReferencedObject().getAttributeValue(
             assocMapClass.collectionAttr, assocMapClass.value);
 
@@ -268,4 +311,36 @@ public class ObjyAccess {
     return true;
   }
 
+  boolean addCallToPersonAssocSeg(com.objy.data.Reference call, 
+          com.objy.data.Reference person) {
+
+    person.getReferencedObject().getAttributeValue(
+            personAssocSegClass.callsAttr, personAssocSegClass.value);
+
+    // check to see if we have such OID in the list...
+    //personAssocSegClass.value.listValue().size();
+    List list = personAssocSegClass.value.listValue();
+    int listSize = list.size();
+    
+    if (!doesListContainReference(list, call))
+    {
+      list.add(new Variable(call));
+    }
+    return true;
+  }
+  
+  private boolean doesListContainReference(List list, Reference value) {
+    Variable var = new Variable();
+    long valueOid = value.getObjectId().asLong();
+    for (int i = 0; i < list.size(); i++)
+    {
+      list.get(i, var);
+      long refOid = var.referenceValue().getObjectId().asLong();
+      if (refOid == valueOid)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
 }
