@@ -7,7 +7,6 @@ package com.objy.se;
 
 import com.objy.data.ClassBuilder;
 import com.objy.data.DataSpecification;
-import com.objy.data.List;
 import com.objy.data.LogicalType;
 import com.objy.data.Reference;
 import com.objy.data.Variable;
@@ -303,6 +302,7 @@ public class ObjyAccess {
 
     // set the key and value in the map from the call object.... 
     Variable key = new Variable(call.getObjectId().toString());
+    //System.out.println("call.getObjectId(): " + call.getObjectId().toString());
     if (!assocMapClass.value.mapValue().containsKey(key))
     {
       Variable value = new Variable(call);
@@ -318,10 +318,8 @@ public class ObjyAccess {
             personAssocSegClass.callsAttr, personAssocSegClass.value);
 
     // check to see if we have such OID in the list...
-    //personAssocSegClass.value.listValue().size();
-    List list = personAssocSegClass.value.listValue();
-    int listSize = list.size();
-    
+    com.objy.data.List list = personAssocSegClass.value.listValue();
+     
     if (!doesListContainReference(list, call))
     {
       list.add(new Variable(call));
@@ -329,7 +327,7 @@ public class ObjyAccess {
     return true;
   }
   
-  private boolean doesListContainReference(List list, Reference value) {
+  private boolean doesListContainReference(com.objy.data.List list, Reference value) {
     Variable var = new Variable();
     long valueOid = value.getObjectId().asLong();
     for (int i = 0; i < list.size(); i++)

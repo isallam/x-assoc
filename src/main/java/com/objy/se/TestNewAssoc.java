@@ -6,6 +6,7 @@ import com.objy.db.Connection;
 import com.objy.db.Objy;
 import com.objy.db.Transaction;
 import com.objy.db.TransactionMode;
+import java.util.ArrayList;
 
 import org.apache.commons.text.RandomStringGenerator;
 
@@ -14,8 +15,8 @@ public class TestNewAssoc {
      * @param args the command line arguments
      */
   
-    public static int numPerson = 100;
-    public static int numCalls = 500;
+    public static int numPerson = 10;
+    public static int numCalls = 100;
   
     public static void main(String[] args)
     {
@@ -44,81 +45,21 @@ public class TestNewAssoc {
       RandomStringGenerator numberGen = new RandomStringGenerator.Builder()
                                                 .withinRange('1', '9').build();
 
-      createPersonAssocSegObjects(tx, objyAccess, nameGen, numberGen);
-
-      createPersonAssocMapObjects(tx, objyAccess, nameGen, numberGen);
+      TestApp testApp = new TestApp(objyAccess, nameGen, numberGen);
       
-      createPersonAssocSegObjects(tx, objyAccess, nameGen, numberGen);
+      ArrayList<Reference> personAssocMapList = 
+              testApp.getOrCreatePersonAssocMapObjects(tx, numPerson);
+      
+      ArrayList<Reference> personAssocSegList = 
+              testApp.getOrCreatePersonAssocSegObjects(tx, numPerson);
+     
+      for (int i = 0; i < 10; i++)
+      {
+        testApp.addNewCallsToPersonAssocMap(tx, personAssocMapList, numCalls);
 
-      createPersonAssocMapObjects(tx, objyAccess, nameGen, numberGen);
+        testApp.addNewCallsToPersonAssocSeg(tx, personAssocSegList, numCalls);
+      }
       
       Transaction.getCurrent().close();
-    }
-    
-    private static void createPersonAssocMapObjects(Transaction tx,
-            ObjyAccess objyAccess, RandomStringGenerator nameGen, 
-            RandomStringGenerator numberGen)
-    {
-      long timeStart = System.currentTimeMillis();
-      
-      tx.start(TransactionMode.READ_UPDATE);
-      
-      for (int personI = 0; personI < numPerson; personI++)
-      {
-        String name = nameGen.generate(20);
-        Instance caller = objyAccess.createPersonAssocMap(personI, name);
-        Reference callerRef = new Reference(caller);
-        for (int phoneI = 0; phoneI < numCalls; phoneI++)
-        {
-          String phoneNumber = numberGen.generate(10);
-          Instance call = objyAccess.createCall(phoneI, phoneNumber, callerRef);
-          //System.out.println("Name: " + name + " >> phoneCall: " + phoneNumber);
-          objyAccess.addCallToPersonAssocMap(new Reference(call), callerRef);
-        }
-        if (((personI+1)%10)==0)
-        {
-          tx.commit();
-          System.out.println("... processed " + (personI+1) + " callers.");
-          tx.start(TransactionMode.READ_UPDATE);
-        }
-      }
-
-      Transaction.getCurrent().commit();
-      double diff = (System.currentTimeMillis() - timeStart)/1000.0;
-      System.out.println("... processTime for AssocMap: " + diff);
-      
-    }
-    
-    private static void createPersonAssocSegObjects(Transaction tx,
-            ObjyAccess objyAccess, RandomStringGenerator nameGen, 
-            RandomStringGenerator numberGen)
-    {
-      long timeStart = System.currentTimeMillis();
-      tx.start(TransactionMode.READ_UPDATE);
-      
-      for (int personI = 0; personI < numPerson; personI++)
-      {
-        String name = nameGen.generate(20);
-        Instance caller = objyAccess.createPersonAssocSeg(personI, name);
-        Reference callerRef = new Reference(caller);
-        for (int phoneI = 0; phoneI < numCalls; phoneI++)
-        {
-          String phoneNumber = numberGen.generate(10);
-          Instance call = objyAccess.createCall(phoneI, phoneNumber, callerRef);
-          //System.out.println("Name: " + name + " >> phoneCall: " + phoneNumber);
-          objyAccess.addCallToPersonAssocSeg(new Reference(call), callerRef);
-        }
-        if (((personI+1)%10)==0)
-        {
-          tx.commit();
-          System.out.println("... processed " + (personI+1) + " callers.");
-          tx.start(TransactionMode.READ_UPDATE);
-        }
-      }
-
-      Transaction.getCurrent().commit();
-      double diff = (System.currentTimeMillis() - timeStart)/1000.0;
-      System.out.println("... processTime for AssocSeg: " + diff);
-      
     }
 }
