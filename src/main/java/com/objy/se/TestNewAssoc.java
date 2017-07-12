@@ -36,9 +36,16 @@ public class TestNewAssoc {
       ObjyAccess objyAccess = new ObjyAccess();
  
       Transaction tx = new Transaction(TransactionMode.READ_ONLY, "spark_write");
-      objyAccess.initAccessMode();
+      boolean schemaInitOK = objyAccess.initAccessMode();
       tx.commit();
       
+      if (!schemaInitOK)
+      {
+        System.err.println("ERROR: Schema is not initialized correctly.");
+        System.err.println("ERROR: You need to run task 'objySetup' before running this one.");
+        return;
+      }
+       
       RandomStringGenerator nameGen = new RandomStringGenerator.Builder()
                                                 .withinRange('a', 'z').build();
 
@@ -53,13 +60,21 @@ public class TestNewAssoc {
       ArrayList<Reference> personAssocSegList = 
               testApp.getOrCreatePersonAssocSegObjects(tx, numPerson);
      
-      for (int i = 0; i < 10; i++)
+      System.out.println(">> Test adding call objects to associations");
+      
+      for (int i = 0; i < 5; i++)
       {
         testApp.addNewCallsToPersonAssocMap(tx, personAssocMapList, numCalls);
 
         testApp.addNewCallsToPersonAssocSeg(tx, personAssocSegList, numCalls);
       }
-      
+
+      System.out.println(">> Test Reading call objects from associations");
+      for (int i = 0; i < 5; i++)
+      {
+        testApp.readCallsFromPersonAssocMap(tx, personAssocMapList);
+        testApp.readCallsFromPersonAssocSeg(tx, personAssocSegList);
+      }
       Transaction.getCurrent().close();
     }
 }

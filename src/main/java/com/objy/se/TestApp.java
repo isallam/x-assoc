@@ -73,24 +73,23 @@ public class TestApp {
     // find data first and create extra if needed.
     personList = findPesonObjects(assocMapType);
     
-    if (personList.size() >= numPerson)
-      return personList;
-    
-    int numToCreate = numPerson - personList.size();
-    
-    Instance caller = null;
-    
-    for (int personI = 0; personI < numToCreate; personI++) {
-      String name = nameGen.generate(20);
-      
-      if (assocMapType)
-        caller = objyAccess.createPersonAssocMap(personI, name);
-      else
-        caller = objyAccess.createPersonAssocSeg(personI, name);
+    if (personList.size() < numPerson)
+    {
+      int numToCreate = numPerson - personList.size();
 
-      personList.add(new Reference(caller));
+      Instance caller = null;
+
+      for (int personI = 0; personI < numToCreate; personI++) {
+        String name = nameGen.generate(20);
+
+        if (assocMapType)
+          caller = objyAccess.createPersonAssocMap(personI, name);
+        else
+          caller = objyAccess.createPersonAssocSeg(personI, name);
+
+        personList.add(new Reference(caller));
+      }
     }
-
     tx.commit();
     double diff = (System.currentTimeMillis() - timeStart) / 1000.0;
     if (assocMapType)
@@ -217,6 +216,58 @@ public class TestApp {
       System.out.println(" person objects with assocSeg.");
     
     return personList;
+  }
+
+  /**
+   * 
+   * @param tx
+   * @param personAssocMapList 
+   */
+  void readCallsFromPersonAssocMap(Transaction tx, ArrayList<Reference> personAssocMapList) {
+    readCallsFromPersonObjects(tx, personAssocMapList, true /* assocMapType */);
+  }
+
+  /**
+   * 
+   * @param tx
+   * @param personAssocSegList 
+   */
+  void readCallsFromPersonAssocSeg(Transaction tx, ArrayList<Reference> personAssocSegList) {
+    readCallsFromPersonObjects(tx, personAssocSegList, false /* !assocMapType */);
+  }
+
+  /**
+   * 
+   * @param tx
+   * @param personList
+   * @param assocMapType 
+   */
+  private void readCallsFromPersonObjects(
+          Transaction tx, ArrayList<Reference> personList, boolean assocMapType) {
+      long timeStart = System.currentTimeMillis();
+      
+      tx.start(TransactionMode.READ_ONLY);
+      
+      int personCount = 0;
+      int callCount = 0;
+      for (Reference callerRef : personList) 
+      {
+        personCount++;
+        if (assocMapType) {
+          callCount += objyAccess.readAllPersonAssocMapCalls(callerRef);
+        }
+        else {
+          callCount += objyAccess.readAllPersonAssocSegCalls(callerRef);
+        }
+      }
+
+      tx.commit();
+      double diff = (System.currentTimeMillis() - timeStart)/1000.0;
+      
+      if (assocMapType)
+        System.out.println("... processTime for reading " + callCount + " calls AssocMap: " + diff);
+      else
+        System.out.println("... processTime for reading " + callCount + " calls AssocSeg: " + diff);
   }
 
 }
